@@ -24,6 +24,8 @@ import numpy as np
 #import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 from itertools import count
+from collections import defaultdict
+from tqdm import tqdm # Progress bar
 
 # ## Set Plotly Options
 
@@ -247,6 +249,44 @@ def remove_disconnected_nodes(G):
 	to_remove = [node for node,degree in dict(G.degree()).items() if degree == 0]
 	G.remove_nodes_from(to_remove)
 
+# On average, how many instances is each node connected to?
+def get_avg_instances_connected_to_nodes(G):
+	connectivity = []
+	for node in G.nodes().keys():
+		instances = set()
+		for neighbor in G.neighbors(node):
+			instances.add(G.nodes[neighbor]["instance"])
+		connectivity.append(len(instances))
+	return np.mean(connectivity)
+
+# See: http://www.countrysideinfo.co.uk/simpsons.htm
+def get_simpson_follower_diversity_index_single_node(G, node):
+	neighboring_instances = defaultdict(lambda: 0)
+	for neighbor in G.neighbors(node):
+		instance = G.nodes[neighbor]["instance"]
+		neighboring_instances[instance] += 1
+	total_neighbors = sum(neighboring_instances.values())
+	diversity = 0.0
+	for instance,count in neighboring_instances.items():
+		diversity += ((count / total_neighbors)**2)
+	return 1-diversity
+
+# What's the probability that two followers are on the same instance?
+def get_simpson_follower_diversity_index(G):
+	diversity_scores = []
+	for node in G.nodes().keys():
+		diversity_scores.append(get_simpson_follower_diversity_index_single_node(G, node))
+	return np.mean(diversity_scores)
+
+# What percentage of nodes are reachable from each node, on average?
+def get_average_reachability(G):
+	reachable = []
+	total_nodes = len(G.nodes())
+	for node in G.nodes().keys():
+		from_here = len(nx.descendants(G, node))
+		reachable.append(from_here/total_nodes)
+	return np.mean(reachable)
+
 def render_graph(G, title, filename):
 	# Map colors
 	groups = set(nx.get_node_attributes(G, 'instance').values())    # Groups colors by node's instance
@@ -262,15 +302,30 @@ def render_graph(G, title, filename):
 
 if __name__ == "__main__":
 	num_instances = 5
-	nodes_per_instance = [20] * num_instances
+	nodes_per_instance = [40] * num_instances
+	p_step = 20
+	pl_step = 5
+	trials = 5
 
-	for p in np.linspace(0,1,20):
-		for power_law in np.linspace(1.5, 3, 5):
-			(G, instances) = create_empty_network(nodes_per_instance)
-			for instance in instances.values():
-				create_edges_in_instance(G, instance, power_law_exponent=power_law)
-			rewire_edges(G, p, power_law)
-			remove_disconnected_nodes(G) # Prettier for plotting
-			title = "%d Instances, p=%.2f, exponent=%.2f" % (num_instances, p, power_law)
-			filename = "test_p_%.2f_e_%.1f.png" % (p,power_law)
-			render_graph(G, title, filename)
+	bar = tqdm(desc="Running simulations", total=p_step*pl_step*trials)
+	log = open("simulation_log.csv", "w")
+	log.write("p,exponent,instance_connectivity,simpsons_index,reachability\n")
+	for p in np.linspace(0,1,p_step):
+		for power_law in np.linspace(1.5, 3, pl_step):
+			for trial in range(0, trials):
+				(G, instances) = create_empty_network(nodes_per_instance)
+				for instance in instances.values():
+					create_edges_in_instance(G, instance, power_law_exponent=power_law)
+				rewire_edges(G, p, power_law)
+				remove_disconnected_nodes(G)
+				instance_connectivity = get_avg_instances_connected_to_nodes(G)
+				simpsons_index = get_simpson_follower_diversity_index(G)
+				reachability = get_average_reachability(G)
+				log.write("%.2f,%.2f,%.5f,%.5f,%.5f\n" % (p, power_law, instance_connectivity, simpsons_index, reachability))
+				if( trial == 0 ):
+					title = "%d Instances, p=%.2f, exponent=%.2f" % (num_instances, p, power_law)
+					filename = "test_p_%.2f_e_%.1f.png" % (p,power_law)
+					render_graph(G, title, filename)
+				bar.update(1)
+	bar.close()
+	log.close()
