@@ -250,13 +250,14 @@ def remove_disconnected_nodes(G):
 	G.remove_nodes_from(to_remove)
 
 # On average, how many instances is each node connected to?
-def get_avg_instances_connected_to_nodes(G):
+# Returns as a percentage of total instances
+def get_avg_instances_connected_to_nodes(G, total_instances):
 	connectivity = []
 	for node in G.nodes().keys():
 		instances = set()
 		for neighbor in G.neighbors(node):
 			instances.add(G.nodes[neighbor]["instance"])
-		connectivity.append(len(instances))
+		connectivity.append(len(instances)/total_instances)
 	return np.mean(connectivity)
 
 # See: http://www.countrysideinfo.co.uk/simpsons.htm
@@ -318,7 +319,7 @@ if __name__ == "__main__":
 					create_edges_in_instance(G, instance, power_law_exponent=power_law)
 				rewire_edges(G, p, power_law)
 				remove_disconnected_nodes(G)
-				instance_connectivity = get_avg_instances_connected_to_nodes(G)
+				instance_connectivity = get_avg_instances_connected_to_nodes(G, num_instances)
 				simpsons_index = get_simpson_follower_diversity_index(G)
 				reachability = get_average_reachability(G)
 				log.write("%.2f,%.2f,%.5f,%.5f,%.5f\n" % (p, power_law, instance_connectivity, simpsons_index, reachability))
