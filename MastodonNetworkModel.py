@@ -304,7 +304,7 @@ def render_graph(G, title, filename):
 
 if __name__ == "__main__":
 	num_instances = 10
-	p_step = 20
+	p_step = 100
 	pl_step = 5
 	trials = 5
 
@@ -320,7 +320,7 @@ if __name__ == "__main__":
 	log = open("simulation_log.csv", "w")
 	log.write("nodes_per_instance,p,exponent,instance_connectivity,simpsons_index,reachability\n")
 	for sizes in range(0, len(instance_keys)):
-		for p in np.linspace(0,1,p_step):
+		for p in np.geomspace(0.0001,1,p_step):
 			for power_law in np.linspace(1.5, 3, pl_step):
 				for trial in range(0, trials):
 					(G, instances) = create_empty_network(nodes_per_instance[instance_keys[sizes]])
