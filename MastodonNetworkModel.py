@@ -30,7 +30,7 @@ from collections import defaultdict
 from tqdm import tqdm # Progress bar
 
 NUM_WORKERS = 10       # Number of processes
-WORKER_CHUNKSIZE = 200 # Number of configurations to hand out at once
+WORKER_CHUNKSIZE = 50  # Number of configurations to hand out at once
 
 # Takes an array of integers for nodes count in each instance
 # returns (networkx network, {instance: set(nodes in instance)})
@@ -198,5 +198,5 @@ if __name__ == "__main__":
 					configurations.append(configuration)
 	results = list(tqdm(pool.imap(run_simulation, configurations, chunksize=WORKER_CHUNKSIZE), total=len(configurations), desc="Running simulations"))
 	for result in results:
-		log.write("%s,%.2f,%.2f,%.5f,%.5f,%.5f\n" % result)
+		log.write("%s,%.5f,%.2f,%.5f,%.5f,%.5f\n" % result)
 	log.close()
