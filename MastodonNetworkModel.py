@@ -23,6 +23,7 @@ import networkx as nx
 import numpy as np
 #import plotly.graph_objects as go
 import matplotlib.pyplot as plt
+from scipy.stats import expon, powerlaw
 from itertools import count
 from collections import defaultdict
 from tqdm import tqdm # Progress bar
@@ -302,31 +303,39 @@ def render_graph(G, title, filename):
 	plt.clf()
 
 if __name__ == "__main__":
-	num_instances = 5
-	nodes_per_instance = [40] * num_instances
+	num_instances = 10
 	p_step = 20
 	pl_step = 5
 	trials = 5
 
+	# Define instance sizes
+	equal_instances = np.full(num_instances, 40)
+	expon_instances = (np.linspace(expon.ppf(0.1), expon.ppf(0.5), num_instances) * 100).astype(int)
+	gamma = 0.67
+	pwrlaw_instances = ((np.linspace(100, 1, num_instances) ** -gamma) * 100).astype(int)
+	nodes_per_instance = {"equal":equal_instances, "expon":expon_instances, "pwrlaw":pwrlaw_instances}
+	instance_keys = list(nodes_per_instance.keys())
+
 	bar = tqdm(desc="Running simulations", total=p_step*pl_step*trials)
 	log = open("simulation_log.csv", "w")
-	log.write("p,exponent,instance_connectivity,simpsons_index,reachability\n")
-	for p in np.linspace(0,1,p_step):
-		for power_law in np.linspace(1.5, 3, pl_step):
-			for trial in range(0, trials):
-				(G, instances) = create_empty_network(nodes_per_instance)
-				for instance in instances.values():
-					create_edges_in_instance(G, instance, power_law_exponent=power_law)
-				rewire_edges(G, p, power_law)
-				remove_disconnected_nodes(G)
-				instance_connectivity = get_avg_instances_connected_to_nodes(G, num_instances)
-				simpsons_index = get_simpson_follower_diversity_index(G)
-				reachability = get_average_reachability(G)
-				log.write("%.2f,%.2f,%.5f,%.5f,%.5f\n" % (p, power_law, instance_connectivity, simpsons_index, reachability))
-				if( trial == 0 ):
-					title = "%d Instances, p=%.2f, exponent=%.2f" % (num_instances, p, power_law)
-					filename = "test_p_%.2f_e_%.1f.png" % (p,power_law)
-					render_graph(G, title, filename)
-				bar.update(1)
+	log.write("nodes_per_instance,p,exponent,instance_connectivity,simpsons_index,reachability\n")
+	for sizes in range(0, len(instance_keys)):
+		for p in np.linspace(0,1,p_step):
+			for power_law in np.linspace(1.5, 3, pl_step):
+				for trial in range(0, trials):
+					(G, instances) = create_empty_network(nodes_per_instance[instance_keys[sizes]])
+					for instance in instances.values():
+						create_edges_in_instance(G, instance, power_law_exponent=power_law)
+					rewire_edges(G, p, power_law)
+					remove_disconnected_nodes(G)
+					instance_connectivity = get_avg_instances_connected_to_nodes(G, num_instances)
+					simpsons_index = get_simpson_follower_diversity_index(G)
+					reachability = get_average_reachability(G)
+					log.write("%s,%.2f,%.2f,%.5f,%.5f,%.5f\n" % (instance_keys[sizes], p, power_law, instance_connectivity, simpsons_index, reachability))
+					if( trial == 0 ):
+						title = "%d Instances, instance sizes=%s, p=%.2f, exponent=%.2f" % (num_instances, instance_keys[sizes], p, power_law)
+						filename = "test_%s_p_%.2f_e_%.1f_.png" % (instance_keys[sizes], p,power_law)
+						render_graph(G, title, filename)
+					bar.update(1)
 	bar.close()
 	log.close()
