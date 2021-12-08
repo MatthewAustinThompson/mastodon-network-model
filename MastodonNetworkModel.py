@@ -316,7 +316,7 @@ if __name__ == "__main__":
 	nodes_per_instance = {"equal":equal_instances, "expon":expon_instances, "pwrlaw":pwrlaw_instances}
 	instance_keys = list(nodes_per_instance.keys())
 
-	bar = tqdm(desc="Running simulations", total=p_step*pl_step*trials)
+	bar = tqdm(desc="Running simulations", total=p_step*pl_step*trials*len(instance_keys))
 	log = open("simulation_log.csv", "w")
 	log.write("nodes_per_instance,p,exponent,instance_connectivity,simpsons_index,reachability\n")
 	for sizes in range(0, len(instance_keys)):
